@@ -7,7 +7,36 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
     <meta name="theme-color" content="#000000" />
-    <title>Stopwatch</title>
+
+    <!-- ✅ SEO Meta Tags -->
+    <title>Big Stopwatch - Fullscreen Timer for Focus & Workouts</title>
+    <meta
+      name="description"
+      content="A fullscreen stopwatch with a minimalist black background and large white numbers. Perfect for workouts, study sessions, and timing events."
+    />
+    <meta
+      name="keywords"
+      content="big stopwatch, fullscreen stopwatch, timer, large stopwatch, online timer, simple stopwatch, minimal stopwatch, black background timer"
+    />
+    <meta name="author" content="Sanchita Pandit" />
+
+    <!-- Open Graph for social sharing -->
+    <meta property="og:title" content="Big Stopwatch - Fullscreen Timer" />
+    <meta
+      property="og:description"
+      content="Use this distraction-free fullscreen stopwatch for workouts, focus sessions, and more."
+    />
+    <meta
+      property="og:image"
+      content="https://sanchi007.github.io/stopwatch/thumbnail.png"
+    />
+    <meta property="og:url" content="https://sanchi007.github.io/stopwatch/" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+    />
     <style>
       html,
       body {
@@ -40,23 +69,81 @@
         gap: 15px;
       }
 
+      button i {
+        font-size: 2rem;
+      }
+
       button {
         background: none;
+        border: none;
         color: white;
-        border: 2px solid white;
-        padding: 10px 20px;
-        font-size: 1.2rem;
-        border-radius: 8px;
         cursor: pointer;
+        padding: 10px;
       }
 
       button:active {
-        background-color: white;
-        color: black;
+        opacity: 0.6;
       }
 
       video {
         display: none;
+      }
+
+      .info-btn {
+        position: fixed;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.8rem;
+        cursor: pointer;
+        z-index: 100;
+      }
+
+      /* Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        color: #fff;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: 30px;
+        z-index: 200;
+      }
+
+      .modal.active {
+        display: flex;
+        animation: fadeIn 0.3s ease-in-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .modal-content {
+        max-width: 400px;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+
+      .close-modal {
+        position: absolute;
+        top: 15px;
+        right: 20px;
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
       }
 
       @media (min-width: 600px) {
@@ -67,12 +154,35 @@
     </style>
   </head>
   <body>
+    <button class="info-btn" id="infoBtn" title="Info">
+      <i class="fa-solid fa-circle-info"></i>
+    </button>
+
     <div id="time">00:00:00</div>
     <div class="controls">
-      <button id="start">Start</button>
-      <button id="stop">Stop</button>
-      <button id="reset">Reset</button>
-      <button id="fullscreen">Fullscreen</button>
+      <button id="start"><i class="fa-solid fa-play"></i></button>
+      <button id="stop"><i class="fa-solid fa-pause"></i></button>
+      <button id="reset"><i class="fa-solid fa-rotate-right"></i></button>
+      <button id="fullscreen"><i class="fa-solid fa-expand"></i></button>
+    </div>
+
+    <!-- Modal Info -->
+    <div class="modal" id="infoModal">
+      <button class="close-modal" id="closeModal">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="modal-content">
+        <h2>About This Stopwatch</h2>
+        <p>
+          This fullscreen stopwatch is designed for focus and clarity — ideal
+          for workouts, study sessions, or presentations.
+        </p>
+        <p>
+          The screen stays awake while running (on supported devices). Use the
+          fullscreen button to hide distractions.
+        </p>
+        <p>Created with ❤️ using HTML, CSS, and JavaScript.</p>
+      </div>
     </div>
 
     <!-- Hidden silent looping video fallback -->
@@ -88,12 +198,16 @@
       let elapsedTime = 0;
       let timerInterval;
       let wakeLock = null;
+
       const timeEl = document.getElementById("time");
       const startBtn = document.getElementById("start");
       const stopBtn = document.getElementById("stop");
       const resetBtn = document.getElementById("reset");
       const fullscreenBtn = document.getElementById("fullscreen");
       const wakeVideo = document.getElementById("wakeVideo");
+      const infoBtn = document.getElementById("infoBtn");
+      const infoModal = document.getElementById("infoModal");
+      const closeModal = document.getElementById("closeModal");
 
       function formatTime(ms) {
         const totalSeconds = Math.floor(ms / 1000);
@@ -110,20 +224,15 @@
         try {
           if ("wakeLock" in navigator) {
             wakeLock = await navigator.wakeLock.request("screen");
-            console.log("✅ Wake Lock active");
             document.addEventListener("visibilitychange", async () => {
               if (wakeLock !== null && document.visibilityState === "visible") {
                 wakeLock = await navigator.wakeLock.request("screen");
               }
             });
           } else {
-            console.warn("⚠️ Wake Lock not supported — using video fallback");
-            wakeVideo
-              .play()
-              .catch((err) => console.log("Video fallback failed:", err));
+            wakeVideo.play().catch(() => {});
           }
         } catch (err) {
-          console.warn("Wake Lock error, using video fallback:", err);
           wakeVideo.play().catch(() => {});
         }
       }
@@ -132,7 +241,6 @@
         if (wakeLock) {
           wakeLock.release();
           wakeLock = null;
-          console.log("Wake Lock released");
         }
         wakeVideo.pause();
       }
@@ -174,6 +282,17 @@
             document.webkitExitFullscreen();
         }
       }
+
+      // Info modal behavior
+      infoBtn.addEventListener("click", () => {
+        infoModal.classList.add("active");
+      });
+      closeModal.addEventListener("click", () => {
+        infoModal.classList.remove("active");
+      });
+      infoModal.addEventListener("click", (e) => {
+        if (e.target === infoModal) infoModal.classList.remove("active");
+      });
 
       startBtn.addEventListener("click", startTimer);
       stopBtn.addEventListener("click", stopTimer);
