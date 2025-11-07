@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#000000" />
+    <title>Stopwatch</title>
+    <style>
+      html,
+      body {
+        background-color: #000;
+        color: #fff;
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        font-family: "Roboto Mono", monospace;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      #time {
+        font-size: 4rem;
+        letter-spacing: 2px;
+        text-align: center;
+      }
+
+      .controls {
+        margin-top: 30px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 15px;
+      }
+
+      button {
+        background: none;
+        color: white;
+        border: 2px solid white;
+        padding: 10px 20px;
+        font-size: 1.2rem;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+
+      button:active {
+        background-color: white;
+        color: black;
+      }
+
+      video {
+        display: none;
+      }
+
+      @media (min-width: 600px) {
+        #time {
+          font-size: 6rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="time">00:00:00</div>
+    <div class="controls">
+      <button id="start">Start</button>
+      <button id="stop">Stop</button>
+      <button id="reset">Reset</button>
+      <button id="fullscreen">Fullscreen</button>
+    </div>
+
+    <!-- Hidden silent looping video fallback -->
+    <video id="wakeVideo" playsinline muted loop preload="auto">
+      <source
+        src="data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wNDFtcDQxaXNvbWF2YzEAAAAIZnJlZQAAACdtZGF0AAAACmZmYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFo="
+        type="video/mp4"
+      />
+    </video>
+
+    <script>
+      let startTime = 0;
+      let elapsedTime = 0;
+      let timerInterval;
+      let wakeLock = null;
+      const timeEl = document.getElementById("time");
+      const startBtn = document.getElementById("start");
+      const stopBtn = document.getElementById("stop");
+      const resetBtn = document.getElementById("reset");
+      const fullscreenBtn = document.getElementById("fullscreen");
+      const wakeVideo = document.getElementById("wakeVideo");
+
+      function formatTime(ms) {
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+        const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
+          2,
+          "0"
+        );
+        const seconds = String(totalSeconds % 60).padStart(2, "0");
+        return `${hours}:${minutes}:${seconds}`;
+      }
+
+      async function requestWakeLock() {
+        try {
+          if ("wakeLock" in navigator) {
+            wakeLock = await navigator.wakeLock.request("screen");
+            console.log("✅ Wake Lock active");
+            document.addEventListener("visibilitychange", async () => {
+              if (wakeLock !== null && document.visibilityState === "visible") {
+                wakeLock = await navigator.wakeLock.request("screen");
+              }
+            });
+          } else {
+            console.warn("⚠️ Wake Lock not supported — using video fallback");
+            wakeVideo
+              .play()
+              .catch((err) => console.log("Video fallback failed:", err));
+          }
+        } catch (err) {
+          console.warn("Wake Lock error, using video fallback:", err);
+          wakeVideo.play().catch(() => {});
+        }
+      }
+
+      function releaseWakeLock() {
+        if (wakeLock) {
+          wakeLock.release();
+          wakeLock = null;
+          console.log("Wake Lock released");
+        }
+        wakeVideo.pause();
+      }
+
+      function startTimer() {
+        startTime = Date.now() - elapsedTime;
+        timerInterval = setInterval(() => {
+          elapsedTime = Date.now() - startTime;
+          timeEl.textContent = formatTime(elapsedTime);
+        }, 1000);
+        startBtn.disabled = true;
+        requestWakeLock();
+      }
+
+      function stopTimer() {
+        clearInterval(timerInterval);
+        startBtn.disabled = false;
+        releaseWakeLock();
+      }
+
+      function resetTimer() {
+        clearInterval(timerInterval);
+        elapsedTime = 0;
+        timeEl.textContent = "00:00:00";
+        startBtn.disabled = false;
+        releaseWakeLock();
+      }
+
+      function toggleFullscreen() {
+        const doc = document.documentElement;
+        if (!document.fullscreenElement) {
+          if (doc.requestFullscreen)
+            doc.requestFullscreen({ navigationUI: "hide" });
+          else if (doc.webkitRequestFullscreen)
+            doc.webkitRequestFullscreen({ navigationUI: "hide" });
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen)
+            document.webkitExitFullscreen();
+        }
+      }
+
+      startBtn.addEventListener("click", startTimer);
+      stopBtn.addEventListener("click", stopTimer);
+      resetBtn.addEventListener("click", resetTimer);
+      fullscreenBtn.addEventListener("click", toggleFullscreen);
+    </script>
+  </body>
+</html>
