@@ -69,24 +69,29 @@
         gap: 15px;
       }
 
-      button i {
-        font-size: 2rem;
-      }
-
       button {
         background: none;
         border: none;
         color: white;
         cursor: pointer;
         padding: 10px;
+        outline: none;
+        -webkit-tap-highlight-color: transparent; 
+        user-select: none;
+      }
+
+      button i {
+        font-size: 2rem;
+      }
+
+      button:focus,
+      button:focus-visible {
+        outline: none;
+        box-shadow: none;
       }
 
       button:active {
         opacity: 0.6;
-      }
-
-      video {
-        display: none;
       }
 
       .info-btn {
@@ -101,7 +106,6 @@
         z-index: 100;
       }
 
-      /* Modal */
       .modal {
         display: none;
         position: fixed;
@@ -153,6 +157,7 @@
       }
     </style>
   </head>
+
   <body>
     <button class="info-btn" id="infoBtn" title="Info">
       <i class="fa-solid fa-circle-info"></i>
@@ -161,12 +166,12 @@
     <div id="time">00:00:00</div>
     <div class="controls">
       <button id="start"><i class="fa-solid fa-play"></i></button>
-      <button id="stop"><i class="fa-solid fa-pause"></i></button>
+      <button id="stop"><i class="fa-solid fa-stop"></i></button>
       <button id="reset"><i class="fa-solid fa-rotate-right"></i></button>
       <button id="fullscreen"><i class="fa-solid fa-expand"></i></button>
     </div>
 
-    <!-- Modal Info -->
+    <!-- Info Modal -->
     <div class="modal" id="infoModal">
       <button class="close-modal" id="closeModal">
         <i class="fa-solid fa-xmark"></i>
@@ -185,14 +190,6 @@
       </div>
     </div>
 
-    <!-- Hidden silent looping video fallback -->
-    <video id="wakeVideo" playsinline muted loop preload="auto">
-      <source
-        src="data:video/mp4;base64,AAAAHGZ0eXBtcDQyAAAAAG1wNDFtcDQxaXNvbWF2YzEAAAAIZnJlZQAAACdtZGF0AAAACmZmYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFo="
-        type="video/mp4"
-      />
-    </video>
-
     <script>
       let startTime = 0;
       let elapsedTime = 0;
@@ -204,7 +201,6 @@
       const stopBtn = document.getElementById("stop");
       const resetBtn = document.getElementById("reset");
       const fullscreenBtn = document.getElementById("fullscreen");
-      const wakeVideo = document.getElementById("wakeVideo");
       const infoBtn = document.getElementById("infoBtn");
       const infoModal = document.getElementById("infoModal");
       const closeModal = document.getElementById("closeModal");
@@ -229,11 +225,9 @@
                 wakeLock = await navigator.wakeLock.request("screen");
               }
             });
-          } else {
-            wakeVideo.play().catch(() => {});
           }
         } catch (err) {
-          wakeVideo.play().catch(() => {});
+          console.warn("Wake Lock failed:", err);
         }
       }
 
@@ -242,7 +236,6 @@
           wakeLock.release();
           wakeLock = null;
         }
-        wakeVideo.pause();
       }
 
       function startTimer() {
@@ -272,24 +265,19 @@
       function toggleFullscreen() {
         const doc = document.documentElement;
         if (!document.fullscreenElement) {
-          if (doc.requestFullscreen)
-            doc.requestFullscreen({ navigationUI: "hide" });
-          else if (doc.webkitRequestFullscreen)
-            doc.webkitRequestFullscreen({ navigationUI: "hide" });
+          doc.requestFullscreen?.({ navigationUI: "hide" });
         } else {
-          if (document.exitFullscreen) document.exitFullscreen();
-          else if (document.webkitExitFullscreen)
-            document.webkitExitFullscreen();
+          document.exitFullscreen?.();
         }
       }
 
-      // Info modal behavior
-      infoBtn.addEventListener("click", () => {
-        infoModal.classList.add("active");
-      });
-      closeModal.addEventListener("click", () => {
-        infoModal.classList.remove("active");
-      });
+      // Info modal
+      infoBtn.addEventListener("click", () =>
+        infoModal.classList.add("active")
+      );
+      closeModal.addEventListener("click", () =>
+        infoModal.classList.remove("active")
+      );
       infoModal.addEventListener("click", (e) => {
         if (e.target === infoModal) infoModal.classList.remove("active");
       });
